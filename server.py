@@ -30,25 +30,35 @@ except Exception as e:
     print(f"Error connecting to MongoDB: {e}")
 
 def get_content_based_recommendations(user, companies_df):
-    preferred_industries = set([ind.lower() for ind in user['focus']])
-    preferred_country = user['geographicPreferences'].lower()
+    preferred_industries = set(user['focus'])
+    preferred_country = user['geographicPreferences']
     
     preferred_companies = []
+
+    # Loop through the companies to find matches
     for _, company in companies_df.iterrows():
-        company_industry = company['Industry'].lower()
-        company_country = company['Country'].lower()
-        
-        industry_match = any(ind in company_industry for ind in preferred_industries)
-        country_match = preferred_country == company_country
+        company_industry = company['Industry']
+        company_country = company['Country']
+        # Check if there is an overlap between user's focus and the company's industry
 
+        if isinstance(company_industry, str):
+            industry_match = any(ind in company_industry.lower() for ind in preferred_industries)
+        else:
+            industry_match = False  # No match if 'Industry' is not a string
+
+        # Check if there is a match for the country
+        country_match = preferred_country.lower() == str(company_country).lower()
+
+        # # Add the company if there's an industry or country match
         if industry_match or country_match:
-            preferred_companies.append(company['_id'])
+            preferred_companies.append(str(company['_id']))
 
+    # print("Filtered preferred companies based on content:", preferred_companies)
     return preferred_companies
 
 def recommend_items(user_id, user_similarity_df, user_item_matrix, content_recommendations):
     similar_users = user_similarity_df[user_id].sort_values(ascending=False)[1:]
-    
+ 
     collaborative_recommendations = set()
     for similar_user in similar_users.index:
         user_interactions = user_item_matrix.loc[similar_user]
@@ -92,7 +102,6 @@ def tokenRequired(f):
 def recommend(current_user):
     if not current_user: 
         return jsonify({"message": "Un-authorised rerquest!"})
-    
 
     user = user_collection.find_one({"_id": ObjectId(current_user)})
     userProfile = user_profile_collection.find_one({"investor": ObjectId(current_user)})
@@ -101,24 +110,33 @@ def recommend(current_user):
 
     if user:
         user['_id'] = str(user['_id'])
+        user['profile'] = str(user['profile'])
 
-    if(userProfile):
+    if userProfile:
+        del userProfile['_id']
+        del userProfile['investor']
         user.update(userProfile)
+
+        # print("user: ", user)
 
     
     # Fetch companies from MongoDB
     companies = list(companies_collection.find({}))
+    # print(len(companies))
+    for company in companies:
+        company['_id'] = str(company['_id'])
+
     companies_df = pd.DataFrame(companies)
   
     interactions = []
 
     # Add interactions from 'history'
     for company_id in user['history']:
-        interactions.append([current_user, company_id, 1])  # 1 means the user has interacted with this company
+        interactions.append([current_user, str(company_id), 1])  # 1 means the user has interacted with this company
 
     # # Add interactions from 'saveList'
     for company_id in user['saveList']:
-        interactions.append([current_user, company_id, 1])
+        interactions.append([current_user, str(company_id), 1])
 
     # Convert interactions to DataFrame
     interactions_df = pd.DataFrame(interactions, columns=['user_id', 'company_id', 'interaction'])
@@ -126,22 +144,25 @@ def recommend(current_user):
     # Pivot table to create the user-item matrix
     user_item_matrix = pd.pivot_table(interactions_df, index='user_id', columns='company_id', values='interaction', fill_value=0)
 
-    # # Calculate cosine similarity between users
+    # print(user_item_matrix.head)
+    # # # Calculate cosine similarity between users
     if user_item_matrix.empty:
         return jsonify({"message": "You have not any interaction with our system!, Please explore more to get recomendations!"})
 
     user_similarity = cosine_similarity(user_item_matrix)
     user_similarity_df = pd.DataFrame(user_similarity, index=user_item_matrix.index, columns=user_item_matrix.index)
 
-    # # # Calculate recommendations
+    # print(user_similarity_df.head)
+    # # # # Calculate recommendations
     content_recommendations = get_content_based_recommendations(user, companies_df)
+    # print("Content Rec: ", content_recommendations)
     final_recommendations = recommend_items(
         user_id=user['_id'],
         user_similarity_df=user_similarity_df,
         user_item_matrix=user_item_matrix,
         content_recommendations=content_recommendations
     )
-
+    print(len(final_recommendations))
     return jsonify(final_recommendations)
 
 if __name__ == '__main__':
