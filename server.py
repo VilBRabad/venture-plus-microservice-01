@@ -39,19 +39,23 @@ def get_content_based_recommendations(user, companies_df):
     for _, company in companies_df.iterrows():
         company_industry = company['Industry']
         company_country = company['Country']
-        # Check if there is an overlap between user's focus and the company's industry
-
+        
+        # Match both industry and country
+        # print(type(company_industry))
         if isinstance(company_industry, str):
             industry_match = any(ind in company_industry.lower() for ind in preferred_industries)
         else:
             industry_match = False  # No match if 'Industry' is not a string
 
-        # Check if there is a match for the country
-        country_match = preferred_country.lower() == str(company_country).lower()
+        country_match = preferred_country.lower() == company_country.lower()
 
-        # # Add the company if there's an industry or country match
-        if industry_match or country_match:
-            preferred_companies.append(str(company['_id']))
+        # Print details of the matching process
+        # print(f"Checking company: {company['Company']}")
+        # print(f"Industry match: {industry_match}, Country match: {country_match}")
+        
+        # Add the company if both industry and country match
+        if industry_match and country_match:
+            preferred_companies.append(company['_id'])
 
     # print("Filtered preferred companies based on content:", preferred_companies)
     return preferred_companies
@@ -147,7 +151,7 @@ def recommend(current_user):
     # print(user_item_matrix.head)
     # # # Calculate cosine similarity between users
     if user_item_matrix.empty:
-        return jsonify({"message": "You have not any interaction with our system!, Please explore more to get recomendations!"})
+        return jsonify({"message": "You have not any interaction with our system!, Please explore more to get recomendations!", "data": []})
 
     user_similarity = cosine_similarity(user_item_matrix)
     user_similarity_df = pd.DataFrame(user_similarity, index=user_item_matrix.index, columns=user_item_matrix.index)
@@ -163,7 +167,7 @@ def recommend(current_user):
         content_recommendations=content_recommendations
     )
     print(len(final_recommendations))
-    return jsonify(final_recommendations)
+    return jsonify({"data": final_recommendations})
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
