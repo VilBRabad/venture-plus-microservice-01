@@ -169,5 +169,9 @@ def recommend(current_user):
     print(len(final_recommendations))
     return jsonify({"data": final_recommendations})
 
+@app.route("/")
+def home():
+    return jsonify({"message": "Home page"})
+
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
