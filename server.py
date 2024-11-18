@@ -170,7 +170,6 @@ def recommend(current_user):
     print(len(final_recommendations))
     return jsonify({"data": final_recommendations})
 
-
 @app.route('/')
 def home():
     return jsonify({"message": "home page..."})
