@@ -1,3 +1,4 @@
+aws-wsgi==0.2.7
 blinker==1.8.2
 click==8.1.7
 dnspython==2.7.0

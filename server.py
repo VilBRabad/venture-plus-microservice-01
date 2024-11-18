@@ -8,6 +8,7 @@ from flask_cors import CORS
 from bson.objectid import ObjectId
 import jwt
 import os
+import awsgi
 
 load_dotenv()
 
@@ -118,7 +119,7 @@ def recommend(current_user):
 
     if userProfile:
         del userProfile['_id']
-        del userProfile['investor']
+        del userProfile['investor'] 
         user.update(userProfile)
 
         # print("user: ", user)
@@ -169,5 +170,25 @@ def recommend(current_user):
     print(len(final_recommendations))
     return jsonify({"data": final_recommendations})
 
-if __name__ == '__main__':
-    app.run(debug=True, port=5000)
+
+@app.route('/')
+def home():
+    return jsonify({"message": "home page..."})
+
+
+def lambda_handler(event, context):
+    try:
+        if 'httpMethod' not in event:
+            raise ValueError("Missing 'httpMethod' in the event")
+        
+        return awsgi.response(app, event, context, base64_content_types={"image/png"})
+    
+    except Exception as e:
+        print(f"Error: {e}")
+        return {
+            "statusCode": 500,
+            "body": f"Error: {str(e)}"
+        }
+
+# if __name__ == '__main__':
+#     app.run(host="0.0.0.0", debug=True, port=5000)
