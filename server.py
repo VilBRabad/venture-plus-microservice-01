@@ -42,6 +42,7 @@ def get_content_based_recommendations(user, companies_df):
     for _, company in companies_df.iterrows():
         company_industry = company['Industry']
         company_country = company['Country']
+        # print(company_industry)
         
         # Match both industry and country
         # print(type(company_industry))
@@ -57,7 +58,7 @@ def get_content_based_recommendations(user, companies_df):
         # print(f"Industry match: {industry_match}, Country match: {country_match}")
         
         # Add the company if both industry and country match
-        if industry_match and country_match:
+        if industry_match or country_match:
             preferred_companies.append(company['_id'])
 
     # print("Filtered preferred companies based on content:", preferred_companies)
@@ -139,11 +140,14 @@ def recommend(current_user):
 
     # Add interactions from 'history'
     for company_id in user['history']:
-        interactions.append([current_user, str(company_id), 1])  # 1 means the user has interacted with this company
+        only_id = company_id['_id']
+        interactions.append([current_user, str(only_id), 1])  # 1 means the user has interacted with this company
 
     # # Add interactions from 'saveList'
     for company_id in user['saveList']:
         interactions.append([current_user, str(company_id), 1])
+
+    # print("INTERACTION: ", interactions)
 
     # Convert interactions to DataFrame
     interactions_df = pd.DataFrame(interactions, columns=['user_id', 'company_id', 'interaction'])
@@ -169,7 +173,7 @@ def recommend(current_user):
         user_item_matrix=user_item_matrix,
         content_recommendations=content_recommendations
     )
-    print(len(final_recommendations))
+    print("LENGTH: ", len(final_recommendations))
     return jsonify({"data": final_recommendations})
 
 
