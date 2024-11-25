@@ -9,6 +9,8 @@ from bson.objectid import ObjectId
 import jwt
 import os
 import awsgi
+import nltk
+from nltk.sentiment.vader import SentimentIntensityAnalyzer
 
 load_dotenv()
 
@@ -170,24 +172,43 @@ def recommend(current_user):
     print(len(final_recommendations))
     return jsonify({"data": final_recommendations})
 
+
+nltk.download('vader_lexicon')
+
+@app.route("/analyze-review", methods=["POST"])
+def analyze_review():
+    data = request.get_json()
+    text = data.get("text", "")
+
+    if not text:
+        return jsonify({"status": 400, "message": "No text provided"})
+
+    analyzer = SentimentIntensityAnalyzer()
+    scores = analyzer.polarity_scores(text)
+    sentiment = 1 if scores['pos'] > 0 else 0
+
+    return jsonify({"text": text, "sentiment": sentiment, "scores": scores})
+
+
 @app.route('/')
 def home():
     return jsonify({"message": "home page..."})
 
 
-def lambda_handler(event, context):
-    try:
-        if 'httpMethod' not in event:
-            raise ValueError("Missing 'httpMethod' in the event")
-        
-        return awsgi.response(app, event, context, base64_content_types={"image/png"})
-    
-    except Exception as e:
-        print(f"Error: {e}")
-        return {
-            "statusCode": 500,
-            "body": f"Error: {str(e)}"
-        }
 
-# if __name__ == '__main__':
-#     app.run(host="0.0.0.0", debug=True, port=5000)
+# def lambda_handler(event, context):
+#     try:
+#         if 'httpMethod' not in event:
+#             raise ValueError("Missing 'httpMethod' in the event")
+        
+#         return awsgi.response(app, event, context, base64_content_types={"image/png"})
+    
+#     except Exception as e:
+#         print(f"Error: {e}")
+#         return {
+#             "statusCode": 500,
+#             "body": f"Error: {str(e)}"
+#         }
+
+if __name__ == '__main__':
+    app.run(host="0.0.0.0", debug=True, port=5000)
